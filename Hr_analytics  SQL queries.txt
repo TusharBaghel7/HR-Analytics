@@ -1,0 +1,86 @@
+##View and Explore the Raw Data
+
+SELECT * FROM HR_Analytics LIMIT 10;
+
+##Remove Duplicate Records
+
+DELETE FROM HR_Analytics
+WHERE ctid NOT IN (
+  SELECT MIN(ctid)
+  FROM HR_Analytics
+  GROUP BY EmpID
+);
+
+##Check for Null Values
+
+SELECT 
+  COUNT(*) AS total_rows,
+  COUNT(Attrition) AS attrition_filled,
+  COUNT(Age) AS age_filled,
+  COUNT(JobRole) AS job_role_filled,
+  COUNT(MonthlyIncome) AS income_filled
+FROM HR_Analytics;
+
+
+##Handle Missing Values
+
+UPDATE HR_Analytics
+SET EnvironmentSatisfaction = (
+  SELECT ROUND(AVG(EnvironmentSatisfaction))
+  FROM HR_Analytics
+  WHERE EnvironmentSatisfaction IS NOT NULL
+)
+WHERE EnvironmentSatisfaction IS NULL;
+
+
+## Create Age Group Column
+
+ALTER TABLE HR_Analytics ADD COLUMN AgeGroup VARCHAR(20);
+
+UPDATE HR_Analytics
+SET AgeGroup = CASE
+  WHEN Age <= 25 THEN '18-25'
+  WHEN Age BETWEEN 26 AND 35 THEN '26-35'
+  WHEN Age BETWEEN 36 AND 45 THEN '36-45'
+  WHEN Age BETWEEN 46 AND 55 THEN '46-55'
+  ELSE '56+'
+END;
+
+
+## Create Salary Slab Column
+
+ALTER TABLE HR_Analytics ADD COLUMN SalarySlab VARCHAR(20);
+
+UPDATE HR_Analytics
+SET SalarySlab = CASE
+  WHEN MonthlyIncome <= 5000 THEN '≤5K'
+  WHEN MonthlyIncome BETWEEN 5001 AND 10000 THEN '5K–10K'
+  WHEN MonthlyIncome BETWEEN 10001 AND 15000 THEN '10K–15K'
+  ELSE '15K+'
+END;
+
+
+## Calculate Key KPIs
+
+##Attrition Rate:
+SELECT 
+  ROUND(100.0 * SUM(CASE WHEN Attrition = 'Yes' THEN 1 ELSE 0 END) / COUNT(*), 1) 
+  AS AttritionRatePercent
+FROM HR_Analytics;
+
+##Average Salary:
+SELECT ROUND(AVG(MonthlyIncome), 2) AS AvgSalary FROM HR_Analytics;
+
+
+##Average Age:
+SELECT ROUND(AVG(Age), 1) AS AvgAge FROM HR_Analytics;
+
+##Average Tenure (YearsAtCompany):
+SELECT ROUND(AVG(CAST(YearsAtCompany AS INT)), 1) AS AvgTenure FROM HR_Analytics;
+
+
+## Find Employees Earning ≤ ₹5K Who Left
+
+SELECT COUNT(*) AS LowIncomeAttritionCount
+FROM HR_Analytics
+WHERE Attrition = 'Yes' AND MonthlyIncome <= 5000;
